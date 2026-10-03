@@ -2,6 +2,8 @@
 
 Gestor de turnos para bancos, clínicas y oficinas de atención: la persona saca un número en el kiosco, lo sigue desde su celular y la pantalla de la sala lo anuncia en voz alta cuando le toca. Todo se sincroniza en tiempo real.
 
+🔗 **Demo en vivo:** https://filalista.vercel.app
+
 Proyecto de portafolio · React + Vite + Tailwind + Supabase (Postgres, Auth y Realtime).
 
 ## Qué hace
@@ -76,7 +78,7 @@ vercel.json               → para que las rutas funcionen al desplegar en Verce
 
 ## Próximos pasos
 
-- [ ] Deploy en Vercel
+- [x] Deploy en Vercel
 - [ ] Pantalla de administración para crear/editar servicios y ventanillas desde la app
 - [ ] Prioridad para adultos mayores, embarazadas y personas con discapacidad
 - [ ] Notificación por WhatsApp/SMS cuando falten 2 turnos
