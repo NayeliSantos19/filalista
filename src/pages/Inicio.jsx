@@ -1,5 +1,8 @@
-import { Link } from "react-router-dom";
+import { useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import Marca from "../components/Marca.jsx";
+import BotonDemo from "../components/BotonDemo.jsx";
+import { HAY_DEMO, entrarComoDemo } from "../lib/demo";
 
 const PASOS = [
   { n: "01", titulo: "Saca tu número", texto: "Elige el servicio en el kiosco y recibe un ticket con código QR." },
@@ -134,6 +137,38 @@ export default function Inicio() {
         </div>
       </section>
 
+      {/* Modo demo */}
+      <section className="max-w-6xl mx-auto px-6 pb-16">
+        <div className="relative overflow-hidden rounded-3xl bg-night text-paper p-7 sm:p-10">
+          <div className="absolute -right-16 -top-16 w-64 h-64 rounded-full bg-coral/20 blur-2xl" aria-hidden="true" />
+          <p className="text-[12px] font-semibold uppercase tracking-wider text-coral">Modo demo</p>
+          <h2 className="font-display text-2xl sm:text-3xl font-bold mt-2">Pruébalo en un minuto</h2>
+          <p className="text-paper/60 text-sm mt-2 max-w-xl">
+            No necesitas una fila real: crea turnos de prueba, abre la pantalla y atiéndelos como si fueras el
+            personal del banco.
+          </p>
+
+          <ol className="grid md:grid-cols-3 gap-4 mt-8">
+            <PasoDemo n="1" titulo="Llena la fila" texto="Crea personas esperando y un historial del día.">
+              <BotonDemo etiqueta="Crear turnos de prueba" />
+            </PasoDemo>
+            <PasoDemo n="2" titulo="Abre la pantalla" texto="Mejor en otra pestaña o ventana, con el sonido activado.">
+              <a
+                href="/pantalla"
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-2 rounded-xl px-4 py-3 text-sm font-semibold bg-white/10 hover:bg-white/15 transition"
+              >
+                Abrir pantalla de sala ↗
+              </a>
+            </PasoDemo>
+            <PasoDemo n="3" titulo="Atiende la fila" texto="Llama al siguiente y mira cómo cambia todo en vivo.">
+              <BotonOperadorDemo />
+            </PasoDemo>
+          </ol>
+        </div>
+      </section>
+
       {/* Cómo funciona */}
       <section className="bg-white border-y border-line">
         <div className="max-w-6xl mx-auto px-6 py-14">
@@ -192,13 +227,6 @@ export default function Inicio() {
           ))}
         </div>
 
-        <div className="mt-10 flex items-start gap-3 bg-sunLight rounded-2xl p-4 text-[13px] text-ink">
-          <Icono d="M12 3a6 6 0 0 0-3 11.2V17h6v-2.8A6 6 0 0 0 12 3Zm-2 18h4" className="w-5 h-5 text-sun shrink-0" />
-          <p>
-            <strong>Para probarlo:</strong> abre la pantalla y el operador en pestañas distintas, y saca turnos desde el
-            kiosco para verlos moverse en vivo.
-          </p>
-        </div>
       </section>
 
       <footer className="border-t border-line">
@@ -207,6 +235,57 @@ export default function Inicio() {
           <span>React · Tailwind · Supabase Realtime</span>
         </div>
       </footer>
+    </div>
+  );
+}
+
+function PasoDemo({ n, titulo, texto, children }) {
+  return (
+    <li className="bg-white/5 border border-white/10 rounded-2xl p-5 flex flex-col">
+      <span className="font-display font-bold text-coral">{n}</span>
+      <h3 className="font-display font-bold text-lg mt-1">{titulo}</h3>
+      <p className="text-[13px] text-paper/60 mt-1 mb-4 flex-grow">{texto}</p>
+      {children}
+    </li>
+  );
+}
+
+function BotonOperadorDemo() {
+  const navigate = useNavigate();
+  const [error, setError] = useState(null);
+  const [cargando, setCargando] = useState(false);
+
+  if (!HAY_DEMO) {
+    return (
+      <Link to="/operador" className="inline-flex items-center gap-2 rounded-xl px-4 py-3 text-sm font-semibold bg-paper text-ink self-start">
+        Ir al operador →
+      </Link>
+    );
+  }
+
+  async function entrar() {
+    setCargando(true);
+    setError(null);
+    try {
+      await entrarComoDemo();
+      navigate("/operador");
+    } catch (e) {
+      setError(e.message);
+      setCargando(false);
+    }
+  }
+
+  return (
+    <div>
+      <button
+        type="button"
+        onClick={entrar}
+        disabled={cargando}
+        className="inline-flex items-center gap-2 rounded-xl px-4 py-3 text-sm font-semibold bg-paper text-ink disabled:opacity-60"
+      >
+        {cargando ? "Entrando…" : "Entrar como operador demo →"}
+      </button>
+      {error && <p className="text-[12px] text-red-300 mt-2">{error}</p>}
     </div>
   );
 }

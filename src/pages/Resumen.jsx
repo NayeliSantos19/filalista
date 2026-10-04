@@ -1,4 +1,8 @@
+import { useState } from "react";
 import { Link } from "react-router-dom";
+import { supabase } from "../lib/supabaseClient";
+import { HAY_DEMO } from "../lib/demo";
+import BotonDemo from "../components/BotonDemo.jsx";
 import { useCatalogo } from "../hooks/useCatalogo";
 import { useTurnosHoy } from "../hooks/useTurnosHoy";
 import { formatoMin, hora, minutosEntre, promedio } from "../lib/fechas";
@@ -22,7 +26,7 @@ function metricas(lista) {
 
 export default function Resumen() {
   const { servicios, ventanillas } = useCatalogo();
-  const { turnos, cargando } = useTurnosHoy();
+  const { turnos, cargando, recargar } = useTurnosHoy();
   const total = metricas(turnos);
   const recientes = [...turnos].reverse().slice(0, 15);
 
@@ -36,8 +40,13 @@ export default function Resumen() {
         }
       />
 
-      <h1 className="font-display text-3xl font-bold mt-10">Resumen de hoy</h1>
-      <p className="text-sm text-muted mt-1">{cargando ? "Cargando…" : "Se actualiza en tiempo real."}</p>
+      <div className="flex flex-wrap items-end justify-between gap-4 mt-10">
+        <div>
+          <h1 className="font-display text-3xl font-bold">Resumen de hoy</h1>
+          <p className="text-sm text-muted mt-1">{cargando ? "Cargando…" : "Se actualiza en tiempo real."}</p>
+        </div>
+        {HAY_DEMO && <ControlesDemo alTerminar={recargar} />}
+      </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-6">
         <Tile valor={total.emitidos} etiqueta="Turnos emitidos" />
@@ -133,6 +142,40 @@ function Tile({ valor, etiqueta, color = "text-ink" }) {
     <div className="bg-white border border-line rounded-2xl p-5">
       <p className={`font-display font-bold text-3xl tabular ${color}`}>{valor}</p>
       <p className="text-[12px] text-muted mt-1">{etiqueta}</p>
+    </div>
+  );
+}
+
+function ControlesDemo({ alTerminar }) {
+  const [confirmar, setConfirmar] = useState(false);
+  const [error, setError] = useState(null);
+
+  async function reiniciar() {
+    const { error } = await supabase.rpc("reiniciar_demo");
+    setConfirmar(false);
+    if (error) setError("No se pudo reiniciar. ¿Corriste supabase-demo.sql?");
+    else alTerminar?.();
+  }
+
+  return (
+    <div className="flex flex-wrap items-start gap-2">
+      <BotonDemo variante="secundario" alTerminar={alTerminar} />
+      {!confirmar ? (
+        <button
+          type="button"
+          onClick={() => setConfirmar(true)}
+          className="rounded-xl px-4 py-3 text-sm font-semibold border border-line bg-white text-muted hover:text-red-600 transition"
+        >
+          Reiniciar el día
+        </button>
+      ) : (
+        <div className="flex items-center gap-2 bg-white border border-red-200 rounded-xl px-3 py-2 text-[13px]">
+          <span>¿Borrar todos los turnos de hoy?</span>
+          <button onClick={reiniciar} className="font-semibold text-red-600">Sí</button>
+          <button onClick={() => setConfirmar(false)} className="text-muted">No</button>
+        </div>
+      )}
+      {error && <p className="w-full text-[12px] text-red-600">{error}</p>}
     </div>
   );
 }

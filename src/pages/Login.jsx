@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { supabase } from "../lib/supabaseClient";
 import Navegacion from "../components/Navegacion.jsx";
+import { HAY_DEMO, CUENTA_DEMO } from "../lib/demo";
 
 // Solo inicio de sesión: las cuentas del personal se crean desde
 // Supabase -> Authentication -> Users -> Add user (así nadie se registra como operador).
@@ -67,6 +68,23 @@ export default function Login() {
             {cargando ? "Un momento…" : "Iniciar sesión"}
           </button>
         </form>
+
+        {HAY_DEMO && (
+          <div className="mt-6 bg-accentLight rounded-2xl p-4">
+            <p className="text-[13px] font-semibold text-accent">¿Solo quieres probar?</p>
+            <p className="text-[12px] text-muted mt-1">Usa la cuenta demo, no necesitas registrarte.</p>
+            <button
+              type="button"
+              onClick={() => {
+                setEmail(CUENTA_DEMO.email);
+                setPassword(CUENTA_DEMO.password);
+              }}
+              className="mt-3 text-[13px] font-semibold text-accent underline underline-offset-2"
+            >
+              Llenar con la cuenta demo
+            </button>
+          </div>
+        )}
         <p className="text-[12px] text-muted mt-5 leading-relaxed">
           ¿No tienes cuenta? Pídele al administrador que te cree una.
         </p>

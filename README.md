@@ -22,6 +22,7 @@ Proyecto de portafolio · React + Vite + Tailwind + Supabase (Postgres, Auth y R
 - **Dos ventanillas no llaman a la misma persona:** `llamar_siguiente` usa `FOR UPDATE SKIP LOCKED`.
 - **Seguridad con RLS:** lectura pública (los turnos no guardan datos personales), pero solo el personal autenticado puede llamar o cerrar turnos. Los clientes no pueden insertar filas directo; solo por la función.
 - **Tiempo real:** Supabase Realtime avisa cada cambio y la app recarga; hay un respaldo cada 30 s por si se cae la conexión.
+- **Modo demo seguro:** `generar_demo()` crea un historial realista del día y personas en fila, con un tope de 25 en espera para que nadie llene la base de datos a punta de clics.
 - **Sonido sin archivos:** la campana se genera con Web Audio y el anuncio usa la voz del navegador (`speechSynthesis`).
 - Los números se reinician cada día según la zona horaria `America/El_Salvador` (configurable en `src/lib/fechas.js` y en `hoy_local()` del SQL).
 
@@ -39,14 +40,16 @@ Proyecto de portafolio · React + Vite + Tailwind + Supabase (Postgres, Auth y R
 
 3. Crea las tablas: abre `supabase-schema.sql`, copia todo y pégalo en el **SQL Editor** de un proyecto **nuevo** de Supabase, luego dale "Run". Crea 3 servicios y 4 ventanillas de prueba.
 
-4. Crea una cuenta de operador: Supabase → **Authentication → Users → Add user** (marca "Auto confirm user").
+4. (Opcional, modo demo) Corre también `supabase-demo.sql` en el SQL Editor. Agrega el botón "Crear turnos de prueba" y "Reiniciar el día". Si además quieres el botón "Entrar como operador demo", crea un usuario demo (paso 5) y pon su correo y contraseña en `VITE_DEMO_EMAIL` y `VITE_DEMO_PASSWORD` del `.env` (y en Vercel).
 
-5. Corre el proyecto:
+5. Crea una cuenta de operador: Supabase → **Authentication → Users → Add user** (marca "Auto confirm user").
+
+6. Corre el proyecto:
    ```
    npm run dev
    ```
 
-6. Abre `http://localhost:5173`. Para la demo, abre `/pantalla` y `/operador` en pestañas distintas y saca turnos desde `/kiosco`.
+7. Abre `http://localhost:5173`. Para la demo, abre `/pantalla` y `/operador` en pestañas distintas y saca turnos desde `/kiosco`.
 
 ## Estructura del proyecto
 
@@ -73,6 +76,7 @@ src/
     Login.jsx             → acceso del personal
   App.jsx                 → rutas
 supabase-schema.sql       → tablas, funciones, RLS y datos de prueba
+supabase-demo.sql         → funciones del modo demo (opcional)
 vercel.json               → para que las rutas funcionen al desplegar en Vercel
 ```
 

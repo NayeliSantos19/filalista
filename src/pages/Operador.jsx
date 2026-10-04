@@ -5,6 +5,7 @@ import { useCatalogo } from "../hooks/useCatalogo";
 import { useTurnosHoy } from "../hooks/useTurnosHoy";
 import { formatoMin, hora, minutosEntre, promedio } from "../lib/fechas";
 import Navegacion from "../components/Navegacion.jsx";
+import BotonDemo from "../components/BotonDemo.jsx";
 
 const CLAVE_VENTANILLA = "filalista.ventanilla";
 const CLAVE_SERVICIOS = "filalista.servicios";
@@ -201,6 +202,12 @@ export default function Operador() {
             <p className="text-[12px] text-muted -mt-2 text-center">
               Al llamar al siguiente, {actual.codigo} se marcará como atendido.
             </p>
+          )}
+          {cola.length === 0 && (
+            <div className="flex flex-col items-center text-center bg-white border border-dashed border-line rounded-2xl p-4">
+              <p className="text-[13px] text-muted mb-3">¿Probando la app? Crea personas en la fila para atenderlas.</p>
+              <BotonDemo variante="secundario" alTerminar={recargar} />
+            </div>
           )}
           {mensaje && (
             <p className={`text-sm text-center ${mensaje.tipo === "error" ? "text-red-600" : "text-muted"}`}>
