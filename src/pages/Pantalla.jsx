@@ -4,6 +4,7 @@ import { useCatalogo } from "../hooks/useCatalogo";
 import { anunciar, campana, desbloquearAudio, textoAnuncio } from "../lib/sonido";
 import { ZONA_HORARIA } from "../lib/fechas";
 import Navegacion from "../components/Navegacion.jsx";
+import Preferencial from "../components/Preferencial.jsx";
 
 function useReloj() {
   const [ahora, setAhora] = useState(new Date());
@@ -66,6 +67,7 @@ export default function Pantalla() {
               <p className="text-xl text-paper/60 font-medium">Turno</p>
               <p className="font-display font-bold text-[8rem] lg:text-[11rem] leading-none text-coral tabular mt-2">
                 {actual.codigo}
+                <Preferencial turno={actual} className="text-[0.4em] align-top ml-2" />
               </p>
               <div className="mt-8 inline-flex items-center gap-3 bg-coral text-white rounded-2xl px-8 py-4 animate-destello">
                 <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -88,7 +90,9 @@ export default function Pantalla() {
               {anteriores.length === 0 && <li className="py-3 text-paper/40">—</li>}
               {anteriores.map((t) => (
                 <li key={t.id} className="flex items-center justify-between py-3">
-                  <span className="font-display font-bold text-3xl tabular">{t.codigo}</span>
+                  <span className="font-display font-bold text-3xl tabular">
+                    {t.codigo} <Preferencial turno={t} className="text-xl align-top" />
+                  </span>
                   <span className="text-lg text-paper/70">{t.ventanilla?.nombre}</span>
                 </li>
               ))}

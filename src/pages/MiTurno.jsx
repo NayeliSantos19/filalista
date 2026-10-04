@@ -5,6 +5,8 @@ import { useTurnosHoy } from "../hooks/useTurnosHoy";
 import { campana, desbloquearAudio, audioListo } from "../lib/sonido";
 import { hora } from "../lib/fechas";
 import Navegacion from "../components/Navegacion.jsx";
+import Preferencial from "../components/Preferencial.jsx";
+import { historialLlamados, ordenDeLlamado } from "../lib/cola";
 
 export default function MiTurno() {
   const { id } = useParams();
@@ -16,11 +18,17 @@ export default function MiTurno() {
   const turno = turnos.find((t) => t.id === id);
 
   // Personas del mismo servicio que llegaron antes y siguen esperando
-  const antes = turno
-    ? turnos.filter(
-        (t) => t.estado === "esperando" && t.servicio_id === turno.servicio_id && t.creado_en < turno.creado_en
-      ).length
-    : 0;
+  // Personas que pasarán antes, aplicando la regla de 1 preferencial por cada 2 normales
+  const antes =
+    turno?.estado === "esperando"
+      ? Math.max(
+          0,
+          ordenDeLlamado(
+            turnos.filter((t) => t.estado === "esperando" && t.servicio_id === turno.servicio_id),
+            historialLlamados(turnos)
+          ).findIndex((t) => t.id === turno.id)
+        )
+      : 0;
 
   const enAtencion = turno
     ? turnos
@@ -86,6 +94,7 @@ export default function MiTurno() {
             <div className="bg-white border border-line rounded-3xl p-7 text-center animate-fade-in-up">
               <p className="text-sm font-semibold text-muted">{turno.servicio?.nombre}</p>
               <p className="font-display font-bold text-6xl mt-1 tabular">{turno.codigo}</p>
+              <Preferencial turno={turno} conTexto className="mt-2" />
               <p className="text-[12px] text-muted mt-1">Sacado a las {hora(turno.creado_en)}</p>
 
               <div className="border-t border-dashed border-line my-6" />

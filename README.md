@@ -10,7 +10,7 @@ Proyecto de portafolio · React + Vite + Tailwind + Supabase (Postgres, Auth y R
 
 | Pantalla | Ruta | Para quién |
 |---|---|---|
-| **Kiosco** | `/kiosco` | Clientes: eligen el servicio y reciben su ticket con QR |
+| **Kiosco** | `/kiosco` | Clientes: eligen el servicio (y si necesitan atención preferencial) y reciben su ticket con QR |
 | **Mi turno** | `/turno/:id` | Clientes: ven cuántas personas faltan, reciben aviso (vibración + sonido) y pueden cancelar |
 | **Pantalla de sala** | `/pantalla` | TV de la sala: turno actual, últimos llamados, fila por servicio y anuncio por voz |
 | **Operador** | `/operador` 🔒 | Personal: llamar siguiente, volver a llamar, atendido / no se presentó |
@@ -22,6 +22,7 @@ Proyecto de portafolio · React + Vite + Tailwind + Supabase (Postgres, Auth y R
 - **Dos ventanillas no llaman a la misma persona:** `llamar_siguiente` usa `FOR UPDATE SKIP LOCKED`.
 - **Seguridad con RLS:** lectura pública (los turnos no guardan datos personales), pero solo el personal autenticado puede llamar o cerrar turnos. Los clientes no pueden insertar filas directo; solo por la función.
 - **Tiempo real:** Supabase Realtime avisa cada cambio y la app recarga; hay un respaldo cada 30 s por si se cae la conexión.
+- **Atención preferencial justa:** adultos mayores, embarazadas y personas con discapacidad sacan un turno con ★. `llamar_siguiente` intercala 1 preferencial por cada 2 normales, así tienen prioridad sin que la fila normal se quede estancada. La misma regla vive en `src/lib/cola.js` para mostrar la posición estimada.
 - **Modo demo seguro:** `generar_demo()` crea un historial realista del día y personas en fila, con un tope de 25 en espera para que nadie llene la base de datos a punta de clics.
 - **Sonido sin archivos:** la campana se genera con Web Audio y el anuncio usa la voz del navegador (`speechSynthesis`).
 - Los números se reinician cada día según la zona horaria `America/El_Salvador` (configurable en `src/lib/fechas.js` y en `hoy_local()` del SQL).
@@ -77,6 +78,7 @@ src/
   App.jsx                 → rutas
 supabase-schema.sql       → tablas, funciones, RLS y datos de prueba
 supabase-demo.sql         → funciones del modo demo (opcional)
+supabase-prioridad.sql    → migración de turnos preferenciales (solo para bases creadas antes de esta función)
 vercel.json               → para que las rutas funcionen al desplegar en Vercel
 ```
 
@@ -84,7 +86,7 @@ vercel.json               → para que las rutas funcionen al desplegar en Verce
 
 - [x] Deploy en Vercel
 - [ ] Pantalla de administración para crear/editar servicios y ventanillas desde la app
-- [ ] Prioridad para adultos mayores, embarazadas y personas con discapacidad
+- [x] Prioridad para adultos mayores, embarazadas y personas con discapacidad
 - [ ] Notificación por WhatsApp/SMS cuando falten 2 turnos
 - [ ] Historial y gráficas por hora del día
 - [ ] Escribir el PRD y el caso de estudio (como en StudySpot)

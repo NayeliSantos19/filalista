@@ -5,6 +5,8 @@ import { useCatalogo } from "../hooks/useCatalogo";
 import { useTurnosHoy } from "../hooks/useTurnosHoy";
 import { formatoMin, hora, minutosEntre, promedio } from "../lib/fechas";
 import Navegacion from "../components/Navegacion.jsx";
+import Preferencial from "../components/Preferencial.jsx";
+import { historialLlamados, ordenDeLlamado } from "../lib/cola";
 import BotonDemo from "../components/BotonDemo.jsx";
 
 const CLAVE_VENTANILLA = "filalista.ventanilla";
@@ -47,7 +49,11 @@ export default function Operador() {
   const ventanilla = ventanillas.find((v) => v.id === ventanillaId);
   const seleccion = serviciosSel ?? [];
   const actual = turnos.find((t) => t.estado === "llamado" && t.ventanilla_id === ventanillaId);
-  const cola = turnos.filter((t) => t.estado === "esperando" && seleccion.includes(t.servicio_id));
+  // La fila en el orden en que se va a llamar (1 preferencial por cada 2 normales)
+  const cola = ordenDeLlamado(
+    turnos.filter((t) => t.estado === "esperando" && seleccion.includes(t.servicio_id)),
+    historialLlamados(turnos)
+  );
   const misAtendidos = turnos.filter((t) => t.estado === "atendido" && t.ventanilla_id === ventanillaId);
   const atencionProm = promedio(
     misAtendidos.filter((t) => t.llamado_en && t.finalizado_en).map((t) => minutosEntre(t.llamado_en, t.finalizado_en))
@@ -157,6 +163,7 @@ export default function Operador() {
             {actual ? (
               <div key={actual.id} className="animate-pop-in">
                 <p className="font-display font-bold text-7xl mt-3 tabular">{actual.codigo}</p>
+                <Preferencial turno={actual} conTexto className="mt-2" />
                 <p className="text-sm text-muted mt-2">
                   {actual.servicio?.nombre} · llegó {hora(actual.creado_en)} · esperó{" "}
                   {formatoMin(minutosEntre(actual.creado_en, actual.llamado_en))}
@@ -243,6 +250,7 @@ export default function Operador() {
           </div>
 
           <p className="text-[13px] font-semibold text-muted uppercase tracking-wider mt-7">Próximos en la fila</p>
+          <p className="text-[11px] text-muted mt-1"><span className="text-sun">★</span> Preferencial · se llama 1 por cada 2 turnos normales</p>
           <ul className="mt-2 divide-y divide-line">
             {cola.length === 0 && <li className="py-4 text-sm text-muted">La fila está vacía 🎉</li>}
             {cola.slice(0, 12).map((t, i) => (
@@ -250,6 +258,7 @@ export default function Operador() {
                 <span className="flex items-center gap-3">
                   <span className="text-[12px] text-muted w-4 tabular">{i + 1}</span>
                   <span className="font-display font-bold text-lg tabular">{t.codigo}</span>
+                  <Preferencial turno={t} />
                 </span>
                 <span className="text-[12px] text-muted">
                   {hora(t.creado_en)} · espera {formatoMin(minutosEntre(t.creado_en, new Date()))}

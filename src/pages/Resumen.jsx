@@ -7,6 +7,7 @@ import { useCatalogo } from "../hooks/useCatalogo";
 import { useTurnosHoy } from "../hooks/useTurnosHoy";
 import { formatoMin, hora, minutosEntre, promedio } from "../lib/fechas";
 import Navegacion from "../components/Navegacion.jsx";
+import Preferencial from "../components/Preferencial.jsx";
 import Estado from "../components/Estado.jsx";
 
 function metricas(lista) {
@@ -16,6 +17,7 @@ function metricas(lista) {
     esperando: lista.filter((t) => t.estado === "esperando").length,
     atendidos: atendidos.length,
     ausentes: lista.filter((t) => t.estado === "no_presento").length,
+    preferenciales: lista.filter((t) => t.prioridad).length,
     cancelados: lista.filter((t) => t.estado === "cancelado").length,
     espera: promedio(lista.filter((t) => t.llamado_en).map((t) => minutosEntre(t.creado_en, t.llamado_en))),
     atencion: promedio(
@@ -57,7 +59,7 @@ export default function Resumen() {
 
       <section className="bg-white border border-line rounded-3xl p-6 mt-5 overflow-x-auto">
         <h2 className="font-display font-bold text-lg">Por servicio</h2>
-        <table className="w-full text-sm mt-3 min-w-[560px]">
+        <table className="w-full text-sm mt-3 min-w-[620px]">
           <thead>
             <tr className="text-left text-[12px] text-muted">
               <th className="py-2 font-medium">Servicio</th>
@@ -65,6 +67,7 @@ export default function Resumen() {
               <th className="py-2 font-medium text-right">En espera</th>
               <th className="py-2 font-medium text-right">Atendidos</th>
               <th className="py-2 font-medium text-right">No llegaron</th>
+              <th className="py-2 font-medium text-right">★ Pref.</th>
               <th className="py-2 font-medium text-right">Espera prom.</th>
               <th className="py-2 font-medium text-right">Atención prom.</th>
             </tr>
@@ -81,6 +84,7 @@ export default function Resumen() {
                   <td className="py-3 text-right">{m.esperando}</td>
                   <td className="py-3 text-right">{m.atendidos}</td>
                   <td className="py-3 text-right">{m.ausentes}</td>
+                  <td className="py-3 text-right">{m.preferenciales}</td>
                   <td className="py-3 text-right">{formatoMin(m.espera)}</td>
                   <td className="py-3 text-right">{formatoMin(m.atencion)}</td>
                 </tr>
@@ -121,7 +125,9 @@ export default function Resumen() {
             {recientes.map((t) => (
               <li key={t.id} className="flex items-center justify-between py-2.5 text-sm">
                 <span className="flex items-center gap-3">
-                  <span className="font-display font-bold tabular w-14">{t.codigo}</span>
+                  <span className="font-display font-bold tabular w-16">
+                    {t.codigo} <Preferencial turno={t} />
+                  </span>
                   <Estado estado={t.estado} />
                 </span>
                 <span className="text-[12px] text-muted">

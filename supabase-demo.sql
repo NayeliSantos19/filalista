@@ -29,6 +29,7 @@ declare
   v_numero int;
   v_creado timestamptz;
   v_llamado timestamptz;
+  v_motivo text;
   v_creados int := 0;
   i int;
 begin
@@ -37,41 +38,42 @@ begin
   from turnos
   where fecha = hoy_local();
 
-  -- Límite para que nadie llene la base de datos a punta de clics
   if v_esperando >= 25 then
     raise exception 'La fila ya tiene suficientes turnos de prueba';
   end if;
 
-  -- 1) Si el día está vacío, crea un "historial" de la última hora y media
-  --    para que el Resumen y la pantalla tengan datos desde el inicio.
   if not v_hay_turnos then
     for i in 1..14 loop
       select * into v_servicio from servicios where activo order by random() limit 1;
       select id into v_ventanilla from ventanillas where activa order by random() limit 1;
       v_creado := now() - make_interval(mins => 100 - i * 6);
       v_llamado := v_creado + make_interval(mins => 2 + floor(random() * 10)::int);
+      v_motivo := case when i % 3 = 0
+        then (array['adulto_mayor', 'embarazo', 'discapacidad'])[1 + floor(random() * 3)::int] end;
       v_numero := _nuevo_numero(v_servicio.id);
 
-      insert into turnos (servicio_id, numero, codigo, estado, ventanilla_id,
+      insert into turnos (servicio_id, numero, codigo, estado, ventanilla_id, prioridad, motivo_prioridad,
                           creado_en, llamado_en, veces_llamado, finalizado_en)
       values (
         v_servicio.id, v_numero, v_servicio.prefijo || '-' || lpad(v_numero::text, 3, '0'),
         case when random() < 0.12 then 'no_presento' else 'atendido' end,
-        v_ventanilla, v_creado, v_llamado, 1,
+        v_ventanilla, v_motivo is not null, v_motivo, v_creado, v_llamado, 1,
         least(now(), v_llamado + make_interval(mins => 2 + floor(random() * 6)::int))
       );
       v_creados := v_creados + 1;
     end loop;
   end if;
 
-  -- 2) Personas esperando en la fila
   for i in 1..8 loop
     select * into v_servicio from servicios where activo order by random() limit 1;
+    v_motivo := case when i in (3, 6)
+      then (array['adulto_mayor', 'embarazo', 'discapacidad'])[1 + floor(random() * 3)::int] end;
     v_numero := _nuevo_numero(v_servicio.id);
 
-    insert into turnos (servicio_id, numero, codigo, creado_en)
+    insert into turnos (servicio_id, numero, codigo, prioridad, motivo_prioridad, creado_en)
     values (
       v_servicio.id, v_numero, v_servicio.prefijo || '-' || lpad(v_numero::text, 3, '0'),
+      v_motivo is not null, v_motivo,
       case when v_hay_turnos then clock_timestamp()
            else now() - make_interval(mins => (8 - i) * 2) end
     );

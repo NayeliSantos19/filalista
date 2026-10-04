@@ -37,6 +37,8 @@ create table turnos (
   creado_en timestamptz not null default now(),
   llamado_en timestamptz,
   veces_llamado int not null default 0,
+  prioridad boolean not null default false,  -- adultos mayores, embarazadas, discapacidad
+  motivo_prioridad text check (motivo_prioridad in ('adulto_mayor', 'embarazo', 'discapacidad')),
   finalizado_en timestamptz,
   unique (servicio_id, fecha, numero)
 );
@@ -47,7 +49,7 @@ create index turnos_fecha_estado_idx on turnos (fecha, estado, creado_en);
 
 -- Cualquiera (kiosco) puede sacar un turno. El número se calcula en la base de datos
 -- con un candado por servicio para que dos personas nunca reciban el mismo número.
-create or replace function sacar_turno(p_servicio_id uuid)
+create or replace function sacar_turno(p_servicio_id uuid, p_motivo_prioridad text default null)
 returns turnos
 language plpgsql security definer set search_path = public as $$
 declare
@@ -66,14 +68,18 @@ begin
   from turnos
   where servicio_id = p_servicio_id and fecha = hoy_local();
 
-  insert into turnos (servicio_id, numero, codigo)
-  values (p_servicio_id, v_numero, v_servicio.prefijo || '-' || lpad(v_numero::text, 3, '0'))
+  insert into turnos (servicio_id, numero, codigo, prioridad, motivo_prioridad)
+  values (
+    p_servicio_id, v_numero, v_servicio.prefijo || '-' || lpad(v_numero::text, 3, '0'),
+    p_motivo_prioridad is not null, p_motivo_prioridad
+  )
   returning * into v_turno;
 
   return v_turno;
 end $$;
 
 -- El operador llama al siguiente turno de los servicios que atiende.
+-- Intercalado: 1 preferencial por cada 2 normales.
 -- El turno que la ventanilla tenía en curso se marca como atendido.
 -- "skip locked" evita que dos ventanillas tomen a la misma persona.
 create or replace function llamar_siguiente(p_ventanilla_id uuid, p_servicios uuid[])
@@ -81,6 +87,7 @@ returns setof turnos
 language plpgsql security definer set search_path = public as $$
 declare
   v_id uuid;
+  v_pref_reciente boolean;
 begin
   if auth.uid() is null then
     raise exception 'Necesitas iniciar sesión';
@@ -90,17 +97,39 @@ begin
   set estado = 'atendido', finalizado_en = now()
   where ventanilla_id = p_ventanilla_id and estado = 'llamado';
 
-  select id into v_id
-  from turnos
-  where fecha = hoy_local()
-    and estado = 'esperando'
-    and servicio_id = any(p_servicios)
-  order by creado_en
-  limit 1
-  for update skip locked;
+  -- ¿Alguno de los 2 últimos llamados del día fue preferencial?
+  select coalesce(bool_or(prioridad), false) into v_pref_reciente
+  from (
+    select prioridad from turnos
+    where fecha = hoy_local() and llamado_en is not null
+    order by llamado_en desc
+    limit 2
+  ) ultimos;
+
+  -- Si no, le toca a un preferencial (si hay alguno esperando)
+  if not v_pref_reciente then
+    select id into v_id
+    from turnos
+    where fecha = hoy_local() and estado = 'esperando'
+      and servicio_id = any(p_servicios) and prioridad
+    order by creado_en
+    limit 1
+    for update skip locked;
+  end if;
+
+  -- Si no tocaba o no hay preferenciales: el normal más antiguo (o un preferencial si ya no quedan normales)
+  if v_id is null then
+    select id into v_id
+    from turnos
+    where fecha = hoy_local() and estado = 'esperando'
+      and servicio_id = any(p_servicios)
+    order by prioridad, creado_en
+    limit 1
+    for update skip locked;
+  end if;
 
   if v_id is null then
-    return;  -- nadie esperando
+    return;
   end if;
 
   return query
@@ -126,7 +155,7 @@ $$;
 
 revoke execute on function llamar_siguiente(uuid, uuid[]) from public, anon;
 grant execute on function llamar_siguiente(uuid, uuid[]) to authenticated;
-grant execute on function sacar_turno(uuid) to anon, authenticated;
+grant execute on function sacar_turno(uuid, text) to anon, authenticated;
 grant execute on function cancelar_turno(uuid) to anon, authenticated;
 
 -- ───────────── Seguridad (RLS) ─────────────

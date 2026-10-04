@@ -5,6 +5,8 @@ import { supabase } from "../lib/supabaseClient";
 import { useCatalogo } from "../hooks/useCatalogo";
 import { useTurnosHoy } from "../hooks/useTurnosHoy";
 import Navegacion from "../components/Navegacion.jsx";
+import Preferencial from "../components/Preferencial.jsx";
+import { MOTIVOS, historialLlamados, ordenDeLlamado } from "../lib/cola";
 
 const SEGUNDOS_TICKET = 25;
 
@@ -14,6 +16,7 @@ export default function Kiosco() {
   const [ticket, setTicket] = useState(null);
   const [enviando, setEnviando] = useState(null);
   const [error, setError] = useState(null);
+  const [motivo, setMotivo] = useState(null); // atención preferencial
 
   const esperando = (servicioId) =>
     turnos.filter((t) => t.servicio_id === servicioId && t.estado === "esperando").length;
@@ -21,14 +24,25 @@ export default function Kiosco() {
   async function sacarTurno(servicio) {
     setEnviando(servicio.id);
     setError(null);
-    const antes = esperando(servicio.id);
-    const { data, error } = await supabase.rpc("sacar_turno", { p_servicio_id: servicio.id });
+    const { data, error } = await supabase.rpc("sacar_turno", {
+      p_servicio_id: servicio.id,
+      p_motivo_prioridad: motivo,
+    });
     setEnviando(null);
     if (error) {
-      setError("No pudimos generar tu turno. Intenta de nuevo.");
+      // PGRST202 = la base de datos no tiene la versión nueva de sacar_turno
+      setError(
+        error.code === "PGRST202"
+          ? "Falta actualizar la base de datos: corre supabase-prioridad.sql en Supabase."
+          : "No pudimos generar tu turno. Intenta de nuevo."
+      );
       return;
     }
+    // Posición estimada aplicando la regla de intercalado
+    const fila = [...turnos.filter((t) => t.servicio_id === servicio.id && t.estado === "esperando"), data];
+    const antes = Math.max(0, ordenDeLlamado(fila, historialLlamados(turnos)).findIndex((t) => t.id === data.id));
     setTicket({ ...data, servicio, antes });
+    setMotivo(null);
   }
 
   // El kiosco vuelve solo a la pantalla de servicios
@@ -45,6 +59,7 @@ export default function Kiosco() {
         <div className="w-full max-w-sm bg-white border border-line rounded-3xl p-8 text-center animate-pop-in">
           <p className="text-sm font-semibold text-muted">{ticket.servicio.nombre}</p>
           <p className="font-display font-bold text-7xl text-ink mt-2 tabular">{ticket.codigo}</p>
+          <Preferencial turno={ticket} conTexto className="mt-3" />
           <p className="text-sm text-muted mt-3">
             {ticket.antes === 0
               ? "Eres el siguiente en la fila."
@@ -83,7 +98,36 @@ export default function Kiosco() {
         <h1 className="font-display text-3xl sm:text-4xl font-bold text-center">¡Bienvenido! ¿Qué necesitas hoy?</h1>
         <p className="text-muted text-center mt-2">Toca un servicio para obtener tu número.</p>
 
-        <div className="mt-10 flex flex-col gap-4">
+        <div className="mt-8 bg-white border border-line rounded-2xl p-4 sm:p-5">
+          <p className="text-sm font-semibold flex items-center gap-2">
+            <span className="text-sun text-lg leading-none">★</span> ¿Necesitas atención preferencial?
+          </p>
+          <div className="flex flex-wrap gap-2 mt-3">
+            {MOTIVOS.map((m) => {
+              const activo = motivo === m.id;
+              return (
+                <button
+                  key={m.id}
+                  type="button"
+                  aria-pressed={activo}
+                  onClick={() => setMotivo(activo ? null : m.id)}
+                  className={`px-3.5 py-2 rounded-full text-[13px] font-semibold border transition ${
+                    activo ? "bg-sun text-white border-sun" : "bg-paper border-line text-ink hover:border-sun"
+                  }`}
+                >
+                  {m.nombre}
+                </button>
+              );
+            })}
+          </div>
+          {motivo && (
+            <p className="text-[12px] text-sun font-semibold mt-3">
+              Tu turno será preferencial. Ahora elige el servicio.
+            </p>
+          )}
+        </div>
+
+        <div className="mt-6 flex flex-col gap-4">
           {cargando && <p className="text-center text-sm text-muted">Cargando servicios…</p>}
           {!cargando && servicios.length === 0 && (
             <p className="text-center text-sm text-muted">
